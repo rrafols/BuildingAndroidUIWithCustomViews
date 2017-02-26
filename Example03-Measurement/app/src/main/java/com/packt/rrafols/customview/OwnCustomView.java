@@ -57,7 +57,6 @@ public class OwnCustomView extends View {
 
     @Override
     protected void onDraw(Canvas canvas) {
-        Log.d(TAG, " ondraw: " + getWidth() + " : " + getHeight());
         canvas.drawRect(0, 0, getWidth(), getHeight(), backgroundPaint);
         super.onDraw(canvas);
     }
