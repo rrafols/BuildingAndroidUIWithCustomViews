@@ -171,12 +171,13 @@ public class CircularActivityIndicator extends View {
                 verMargin + circleSize - BORDER_SIZE /2,
                 0, selectedAngle, true, indicatorBorderPaint);
 
-//        canvas.drawArc(
-//                clipX - BORDER_SIZE / 4,
-//                clipY - BORDER_SIZE / 4,
-//                clipX + clipWidth + BORDER_SIZE /2,
-//                clipY + clipWidth + BORDER_SIZE /2,
-//                0, selectedAngle, true, indicatorBorderPaint);
+        //draw inner border by drawing an arc the size of the clipping area
+        canvas.drawArc(
+                clipX - BORDER_SIZE / 4,
+                clipY - BORDER_SIZE / 4,
+                clipX + clipWidth + BORDER_SIZE /2,
+                clipY + clipWidth + BORDER_SIZE /2,
+                0, selectedAngle, true, indicatorBorderPaint);
 
         canvas.restore();
 
