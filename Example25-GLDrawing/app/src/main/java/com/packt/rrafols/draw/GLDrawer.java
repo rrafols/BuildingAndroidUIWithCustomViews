@@ -208,7 +208,7 @@ public class GLDrawer extends GLSurfaceView {
         final int[] textureIds = new int[1];
         GLES20.glGenTextures(1, textureIds, 0);
 
-        if (textureIds[0] != 0) return -1;
+        if (textureIds[0] == 0) return -1;
 
         // do not scale the bitmap depending on screen density
         final BitmapFactory.Options options = new BitmapFactory.Options();
