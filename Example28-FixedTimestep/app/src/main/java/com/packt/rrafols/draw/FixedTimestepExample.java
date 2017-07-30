@@ -69,13 +69,9 @@ public class FixedTimestepExample extends View {
         previousVisibility = visibility;
     }
 
-    private void spawnParticle(float x, float y) {
+    private void spawnParticle(float x, float y, int width, int height) {
         for (int i = 0; i < SPAWN_RATE; i++) {
-            particles[particleIndex].x = x;
-            particles[particleIndex].y = y;
-            particles[particleIndex].vx = (float) (Math.random() * 40.f) - 20.f;
-            particles[particleIndex].vy = (float) (Math.random() * 20.f) - 10.f;
-            particles[particleIndex].ttl = (float) (Math.random() * 100.f) + 150.f;
+            particles[particleIndex].spawn(x, y, width, height);
 
             particleIndex++;
             if (particleIndex == N_PARTICLES) particleIndex = 0;
@@ -87,7 +83,7 @@ public class FixedTimestepExample extends View {
         switch (event.getAction()) {
             case MotionEvent.ACTION_DOWN:
             case MotionEvent.ACTION_MOVE:
-                spawnParticle(event.getX(), event.getY());
+                spawnParticle(event.getX(), event.getY(), getWidth(), getHeight());
                 return true;
         }
         return super.onTouchEvent(event);
@@ -105,6 +101,11 @@ public class FixedTimestepExample extends View {
 
             accTime -= TIME_THRESHOLD;
         }
+
+        float factor = ((float) accTime) / TIME_THRESHOLD;
+        for (int i = 0; i < N_PARTICLES; i++) {
+            particles[i].adjustLogicStep(factor);
+        }
     }
 
     @Override
@@ -114,8 +115,8 @@ public class FixedTimestepExample extends View {
         canvas.drawColor(BACKGROUND_COLOR);
 
         for(int i = 0; i < N_PARTICLES; i++) {
-            float px = particles[i].x;
-            float py = particles[i].y;
+            float px = particles[i].drawX;
+            float py = particles[i].drawY;
             float ttl = particles[i].ttl;
 
             if(ttl > 0) {
@@ -136,33 +137,60 @@ public class FixedTimestepExample extends View {
         float vy;
         float ttl;
 
+        float nextX;
+        float nextY;
+        float nextVX;
+        float nextVY;
+
+        float drawX, drawY;
+
         Particle() {
             ttl = 0.f;
+        }
+
+        void adjustLogicStep(float factor) {
+            drawX = x * (1.f - factor) + nextX * factor;
+            drawY = y * (1.f - factor) + nextY * factor;
+        }
+
+        void spawn(float x, float y, int width, int height) {
+            this.x = x;
+            this.y = y;
+            nextX = x;
+            nextY = y;
+            nextVX = (float) (Math.random() * 40.f) - 20.f;
+            nextVY = (float) (Math.random() * 20.f) - 10.f;
+            ttl = (float) (Math.random() * 100.f) + 150.f + 1;
         }
 
         void logicTick(int width, int height) {
             ttl--;
 
             if (ttl > 0) {
-                vx = vx * 0.95f;
-                vy = vy + 0.2f;
+                x = nextX;
+                y = nextY;
+                vx = nextVX;
+                vy = nextVY;
 
-                x += vx;
-                y += vy;
+                nextVX = nextVX * 0.95f;
+                nextVY = nextVY + 0.2f;
 
-                if (y < 0) {
-                    y = 0;
-                    vy = -vy * 0.8f;
+                nextX += nextVX;
+                nextY += nextVY;
+
+                if (nextY < 0) {
+                    nextY = 0;
+                    nextVY = -nextVY * 0.8f;
                 }
 
-                if (x < 0) {
-                    x = 0;
-                    vx = -vx * 0.8f;
+                if (nextX < 0) {
+                    nextX = 0;
+                    nextVX = -nextVX * 0.8f;
                 }
 
-                if (x >= width) {
-                    x = width - 1;
-                    vx = -vx * 0.8f;
+                if (nextX >= width) {
+                    nextX = width - 1;
+                    nextVX = -nextVX * 0.8f;
                 }
             }
         }
