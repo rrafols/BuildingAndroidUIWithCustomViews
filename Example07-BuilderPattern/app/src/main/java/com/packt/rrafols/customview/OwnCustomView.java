@@ -6,6 +6,7 @@ import android.graphics.Canvas;
 import android.graphics.LinearGradient;
 import android.graphics.Paint;
 import android.graphics.Shader;
+import android.os.SystemClock;
 import android.util.AttributeSet;
 import android.util.DisplayMetrics;
 import android.util.Log;
@@ -16,6 +17,10 @@ public class OwnCustomView extends View {
     private static final String TAG = OwnCustomView.class.getName();
     private static final int DEFAULT_SIZE = 2000;
     private static final int DEFAULT_FILL_COLOR = 0xffff0000;
+    private static final int PREVIEW_RED = 0xffff0000;
+    private static final int PREVIEW_BLUE = 0xff0000ff;
+    private static final int PREVIEW_GREEN = 0xff00ff00;
+    private static final int PREVIEW_BLACK = 0xff000000;
     private Paint backgroundPaint;
     private boolean firstDraw;
     private int[] colorArray;
@@ -23,14 +28,35 @@ public class OwnCustomView extends View {
     private OwnCustomView(Builder builder) {
         super(builder.context);
 
+        init(builder.topLeftColor,
+             builder.topRightColor,
+             builder.bottomLeftColor,
+             builder.bottomRightColor);
+    }
+
+    public OwnCustomView(Context context, AttributeSet attrs) {
+        super(context, attrs);
+
+        if (isInEditMode()) {
+            init(PREVIEW_RED,
+                 PREVIEW_BLUE,
+                 PREVIEW_GREEN,
+                 PREVIEW_BLACK);
+
+        } else {
+            throw new IllegalStateException("Not supposed to be parametrized from XML in this example");
+        }
+    }
+
+    private void init(int topLeftColor, int topRightColor, int bottomLeftColor, int bottomRightColor) {
         backgroundPaint = new Paint();
         backgroundPaint.setStyle(Paint.Style.FILL);
 
         colorArray = new int[] {
-                builder.topLeftColor,
-                builder.topRightColor,
-                builder.bottomRightColor,
-                builder.bottomLeftColor
+                topLeftColor,
+                topRightColor,
+                bottomRightColor,
+                bottomLeftColor
         };
 
         firstDraw = true;
