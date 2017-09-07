@@ -6,6 +6,12 @@ public class Program {
     private long startTime;
     private long endTime;
 
+    public Program(String name, String description, long startTime, long endTime) {
+        this.name = name;
+        this.description = description;
+        this.startTime = startTime;
+        this.endTime = endTime;
+    }
 
     public String getName() {
         return name;
