@@ -32,6 +32,7 @@ public class MainActivity extends AppCompatActivity {
                         "This will be the description of program " + j,
                         time,time + duration);
 
+                channelList[i].addProgram(program);
                 time += duration;
             }
         }
