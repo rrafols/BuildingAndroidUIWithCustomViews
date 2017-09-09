@@ -5,6 +5,7 @@ import android.os.Bundle;
 
 import com.rrafols.packt.epg.data.Channel;
 import com.rrafols.packt.epg.data.Program;
+import com.squareup.picasso.Picasso;
 
 import java.util.Random;
 
@@ -22,7 +23,14 @@ public class MainActivity extends AppCompatActivity {
     private static void populateDummyChannelList(EPG epg) {
         Channel[] channelList = new Channel[20];
         for (int i = 0; i < channelList.length; i++) {
-            channelList[i] = new Channel("channel " + i, null);
+            String iconURL = "https://github.com/googlei18n/noto-emoji/raw/master/png/128/emoji_u1f3";
+            if (i < 10) {
+                iconURL += "0" + i;
+            } else {
+                iconURL += i;
+            }
+            iconURL += ".png";
+            channelList[i] = new Channel("channel " + i, iconURL);
 
             Random rnd = new Random();
             long time = System.currentTimeMillis() - 2 * 60 * 60 * 1000;

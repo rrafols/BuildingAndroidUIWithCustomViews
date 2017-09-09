@@ -21,6 +21,7 @@ public class Animator {
     }
 
     public void update(String key, float dt) {
+
         if (values.containsKey(key)) {
             AnimPair ap = values.get(key);
             ap.setTarget(ap.getTarget() + dt);
