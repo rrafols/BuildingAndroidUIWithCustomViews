@@ -6,7 +6,6 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
-import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
 import android.os.SystemClock;
 import android.util.AttributeSet;
@@ -21,12 +20,16 @@ import com.squareup.picasso.MemoryPolicy;
 import com.squareup.picasso.Picasso;
 import com.squareup.picasso.Target;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.Locale;
 
 public class EPG extends View {
     private static final String TAG = EPG.class.getName();
     private static final int CHANNEL_HEIGHT = 80;
-    private static final float DEFAULT_TIME_SCALE = 0.08f;
+    private static final float DEFAULT_TIME_SCALE = 0.0001f;
     private static final float PROGRAM_MARGIN = 4;
     private static final int TIME_THRESHOLD = 16;
     private static final float ANIM_THRESHOLD = 0.01f;
@@ -36,6 +39,7 @@ public class EPG extends View {
     private final float timebarHeight;
     private final float programMargin;
 
+    private final Paint paintTimeBar;
     private final Paint paintChannelText;
     private final Paint paintProgramText;
     private final Paint paintProgram;
@@ -57,7 +61,12 @@ public class EPG extends View {
     private long accTime;
     private Context context;
     private Rect textBoundaries;
+    private Rect timeBarTextBoundaries;
+
     private ScaleGestureDetector scaleDetector;
+
+    private final long initialTimeValue;
+    private final Calendar calendar;
 
     public EPG(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -80,6 +89,14 @@ public class EPG extends View {
         paintProgram.setColor(Color.WHITE);
         paintProgram.setStyle(Paint.Style.FILL);
 
+        paintTimeBar = new Paint();
+        paintTimeBar.setTextSize(30.f);
+        paintTimeBar.setColor(Color.WHITE);
+        paintTimeBar.setAntiAlias(true);
+
+        timeBarTextBoundaries = new Rect();
+        paintTimeBar.getTextBounds("88:88", 0, "88:88".length(), timeBarTextBoundaries);
+
         paintCurrentTime = new Paint();
         paintCurrentTime.setColor(Color.RED);
         paintCurrentTime.setAlpha(180);
@@ -101,26 +118,40 @@ public class EPG extends View {
         // more information:
         // https://developer.android.com/training/gestures/scale.html
         scaleDetector = new ScaleGestureDetector(context, new ScaleGestureDetector.SimpleOnScaleGestureListener() {
+            private long focusTime;
             private float scrollCorrection = 0.f;
             @Override
             public boolean onScaleBegin(ScaleGestureDetector detector) {
-                scrollCorrection = scrollXTarget * timeScale;
+                zooming = true;
+                focusTime = getHorizontalPositionTime(scrollXTarget + detector.getFocusX());
+//                scrollCorrection = getTimeHorizontalPosition(System.currentTimeMillis()) - scrollXTarget;
+                scrollCorrection = getTimeHorizontalPosition((focusTime)) - scrollXTarget;
                 return true;
             }
 
             public boolean onScale(ScaleGestureDetector detector) {
                 timeScale *= detector.getScaleFactor();
                 timeScale = Math.max(DEFAULT_TIME_SCALE * screenDensity / 2, Math.min(timeScale, DEFAULT_TIME_SCALE * screenDensity * 4));
+
+                float current = getTimeHorizontalPosition((focusTime)) - scrollXTarget;
+                float scrollDifference = current - scrollCorrection;
+                scrollXTarget += scrollDifference;
                 zooming = true;
-//                scrollXTarget += scrollXTarget * timeScale - scrollCorrection;
-//                scrollCorrection = scrollXTarget * timeScale;
+
                 invalidate();
                 return true;
+            }
+
+            @Override
+            public void onScaleEnd(ScaleGestureDetector detector) {
+                zooming = true;
             }
         });
 
         textBoundaries = new Rect();
         timeStart = SystemClock.elapsedRealtime();
+        initialTimeValue = System.currentTimeMillis() - 30 * 60 * 1000;
+        calendar = Calendar.getInstance();
     }
 
     public void setChannelList(Channel[] channelList) {
@@ -131,22 +162,68 @@ public class EPG extends View {
     protected void onDraw(Canvas canvas) {
         animateLogic();
 
+        long currentTime = System.currentTimeMillis();
+
+        drawBackground(canvas);
+        drawEPGBody(canvas, currentTime, scrollY);
+        drawTimeBar(canvas, currentTime);
+        drawCurrentTime(canvas, currentTime);
+
+        if (missingAnimations()) invalidate();
+    }
+
+    private void drawTimeBar(Canvas canvas, long currentTime) {
+        calendar.setTimeInMillis(initialTimeValue - 120 * 60 * 1000);
+        calendar.set(Calendar.MINUTE, 0);
+        calendar.set(Calendar.SECOND, 0);
+        calendar.set(Calendar.MILLISECOND, 0);
+
+        long time = calendar.getTimeInMillis();
+        float x = getTimeHorizontalPosition(time) - scrollX + getWidth() / 4.f;
+
+        while(x < getWidth()) {
+            if(x > 0) {
+                canvas.drawLine(x, 0, x, timebarHeight, paintTimeBar);
+            }
+
+            if(x + timeBarTextBoundaries.width() > 0) {
+                SimpleDateFormat dateFormatter = new SimpleDateFormat("HH:mm", Locale.US);
+                String date = dateFormatter.format(new Date(time));
+                canvas.drawText(date, x + programMargin, (timebarHeight - timeBarTextBoundaries.height()) / 2.f + timeBarTextBoundaries.height(), paintTimeBar);
+            }
+
+            time += 30 * 60 * 1000;
+            x = getTimeHorizontalPosition(time) - scrollX + getWidth() / 4.f;
+        }
+
+        canvas.drawLine(0, timebarHeight, getWidth(), timebarHeight, paintTimeBar);0
+    }
+
+    private void drawBackground(Canvas canvas) {
         canvas.drawARGB(backgroundColor >> 24, (backgroundColor >> 16) & 0xff,
                 (backgroundColor >> 8) & 0xff, backgroundColor & 0xff);
+    }
 
-        float offset = scrollY;
+    private void drawCurrentTime(Canvas canvas, long currentTime) {
+        float currentTimePos = getWidth() / 4.f + getTimeHorizontalPosition(currentTime) - scrollX;
+        canvas.drawRect(currentTimePos - programMargin/2, 0, currentTimePos + programMargin/2, timebarHeight, paintCurrentTime);
+        canvas.clipRect(getWidth() / 4.f, 0, getWidth(), getHeight());
+        canvas.drawRect(currentTimePos - programMargin/2, timebarHeight, currentTimePos + programMargin/2, getHeight(), paintCurrentTime);
+    }
+
+    private void drawEPGBody(Canvas canvas, long currentTime, float verticalOffset) {
         int startChannel = (int) (scrollY / channelHeight);
-        offset -= startChannel * channelHeight;
+        verticalOffset -= startChannel * channelHeight;
         int endChannel = startChannel + (getHeight() - ((int) (timebarHeight + 0.5f))) / channelHeight + 1;
         if (endChannel >= channelList.length) endChannel = channelList.length - 1;
 
         canvas.save();
         canvas.clipRect(0, timebarHeight, getWidth(), getHeight());
         for (int i = startChannel; i <= endChannel; i++) {
-            float channelTop = (i - startChannel) * channelHeight - offset + timebarHeight;
+            float channelTop = (i - startChannel) * channelHeight - verticalOffset + timebarHeight;
             float channelBottom = channelTop + channelHeight;
 
-            canvas.drawText("channel " + i, 10, channelHeight/2 + (i - startChannel) * channelHeight - offset, paintChannelText);
+            canvas.drawText("channel " + i, 10, channelHeight/2 + (i - startChannel) * channelHeight - verticalOffset, paintChannelText);
             canvas.drawLine(0, channelBottom, getWidth(), channelBottom, paintChannelText);
 
             if (channelList[i].getIcon() != null) {
@@ -171,23 +248,41 @@ public class EPG extends View {
 
                 long st = program.getStartTime();
                 long et = program.getEndTime();
-                float dt = (et - st) / 1000.f;
 
-                canvas.drawRoundRect(horizontalOffset + programMargin, channelTop + programMargin,
-                        horizontalOffset + dt * timeScale - programMargin, channelBottom - programMargin, programMargin, programMargin, paintProgram);
+                float programStartX = getTimeHorizontalPosition(st);
+                float programEndX = getTimeHorizontalPosition(et);
 
-                paintProgramText.getTextBounds(program.getName(), 0, program.getName().length(), textBoundaries);
-                float textPosition = channelTop + textBoundaries.height() + ((channelHeight - programMargin * 2) - textBoundaries.height()) / 2;
-                canvas.drawText(program.getName(), horizontalOffset + programMargin * 2, textPosition, paintProgramText);
+                if (programStartX - scrollX > getWidth()) break;
 
-                horizontalOffset += dt * timeScale;
+                if (programEndX - scrollX >= 0) {
+
+                    if (st <= currentTime && et > currentTime) {
+                        paintProgram.setColor(Color.YELLOW);
+                    } else {
+                        paintProgram.setColor(Color.WHITE);
+                    }
+
+                    canvas.drawRoundRect(horizontalOffset + programMargin + programStartX,
+                            channelTop + programMargin,
+                            horizontalOffset - programMargin + programEndX,
+                            channelBottom - programMargin,
+                            programMargin,
+                            programMargin,
+                            paintProgram);
+
+                    paintProgramText.getTextBounds(program.getName(), 0, program.getName().length(), textBoundaries);
+                    float textPosition = channelTop + textBoundaries.height() + ((channelHeight - programMargin * 2) - textBoundaries.height()) / 2;
+                    canvas.drawText(program.getName(),
+                                horizontalOffset + programMargin * 2 + programStartX,
+                                textPosition,
+                                paintProgramText);
+                }
             }
+
             canvas.restore();
         }
-        canvas.restore();
-        canvas.drawRect(100, 0, 150, getHeight(), paintCurrentTime);
 
-        if (missingAnimations()) invalidate();
+        canvas.restore();
     }
 
     @Override
@@ -225,6 +320,15 @@ public class EPG extends View {
         }
     }
 
+    private float getTimeHorizontalPosition(long ts) {
+        long timeDifference = (ts - initialTimeValue);
+        return timeDifference * timeScale;
+    }
+
+    private long getHorizontalPositionTime(float x) {
+        return (long) ((x / timeScale) + initialTimeValue);
+    }
+
     private boolean missingAnimations() {
         if (Math.abs(scrollXTarget - scrollX) > ANIM_THRESHOLD) return true;
         if (Math.abs(scrollYTarget - scrollY) > ANIM_THRESHOLD) return true;
@@ -248,7 +352,7 @@ public class EPG extends View {
         scrollXTarget += dx;
         scrollYTarget += dy;
 
-        if (scrollXTarget < 0) scrollXTarget = 0;
+        if (scrollXTarget < -getWidth() / 4) scrollXTarget = -getWidth() / 4;
         if (scrollYTarget < 0) scrollYTarget = 0;
 
         float maxHeight = channelList.length * channelHeight - getHeight() + 1 + timebarHeight;

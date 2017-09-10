@@ -7,6 +7,8 @@ import com.rrafols.packt.epg.data.Channel;
 import com.rrafols.packt.epg.data.Program;
 import com.squareup.picasso.Picasso;
 
+import java.util.Calendar;
+import java.util.Date;
 import java.util.Random;
 
 public class MainActivity extends AppCompatActivity {
@@ -33,7 +35,16 @@ public class MainActivity extends AppCompatActivity {
             channelList[i] = new Channel("channel " + i, iconURL);
 
             Random rnd = new Random();
-            long time = System.currentTimeMillis() - 2 * 60 * 60 * 1000;
+//            long time = System.currentTimeMillis(); // - 2 * 60 * 60 * 1000;
+
+            Calendar calendar = Calendar.getInstance();
+            calendar.setTimeInMillis(System.currentTimeMillis());
+            calendar.add(Calendar.HOUR, -2);
+            calendar.set(Calendar.MINUTE, 0);
+            calendar.set(Calendar.SECOND, 0);
+            calendar.set(Calendar.MILLISECOND, 0);
+            long time = calendar.getTimeInMillis();
+
             for (int j = 0; j < 100; j++ ) {
                 long duration = (rnd.nextInt(7) + 1) * 15 * 60 * 1000;
                 Program program = new Program("Program " + j,
