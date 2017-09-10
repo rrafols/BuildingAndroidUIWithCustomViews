@@ -145,6 +145,7 @@ public class EPG extends View {
                 timeScale *= detector.getScaleFactor();
                 timeScale = Math.max(DEFAULT_TIME_SCALE * screenDensity / 2, Math.min(timeScale, DEFAULT_TIME_SCALE * screenDensity * 4));
 
+                // correct scroll position otherwise will move too much when zooming
                 float current = getTimeHorizontalPosition((focusTime)) - scrollXTarget;
                 float scrollDifference = current - scrollCorrection;
                 scrollXTarget += scrollDifference;
@@ -200,6 +201,9 @@ public class EPG extends View {
         if (missingAnimations()) invalidate();
     }
 
+    /**
+     * Draw the horizontal top bar with half-hour indications.
+     */
     private void drawTimeBar(Canvas canvas, long currentTime) {
         calendar.setTimeInMillis(initialTimeValue - 120 * 60 * 1000);
         calendar.set(Calendar.MINUTE, 0);
@@ -217,7 +221,10 @@ public class EPG extends View {
             if(x + timeBarTextBoundaries.width() > 0) {
                 SimpleDateFormat dateFormatter = new SimpleDateFormat("HH:mm", Locale.US);
                 String date = dateFormatter.format(new Date(time));
-                canvas.drawText(date, x + programMargin, (timebarHeight - timeBarTextBoundaries.height()) / 2.f + timeBarTextBoundaries.height(), paintTimeBar);
+                canvas.drawText(date,
+                        x + programMargin,
+                        (timebarHeight - timeBarTextBoundaries.height()) / 2.f + timeBarTextBoundaries.height(),
+                        paintTimeBar);
             }
 
             time += 30 * 60 * 1000;
@@ -227,11 +234,17 @@ public class EPG extends View {
         canvas.drawLine(0, timebarHeight, getWidth(), timebarHeight, paintTimeBar);
     }
 
+    /**
+     * Draw the EPG background.
+     */
     private void drawBackground(Canvas canvas) {
         canvas.drawARGB(backgroundColor >> 24, (backgroundColor >> 16) & 0xff,
                 (backgroundColor >> 8) & 0xff, backgroundColor & 0xff);
     }
 
+    /**
+     * Draw a vertical bar on the current time
+     */
     private void drawCurrentTime(Canvas canvas, long currentTime) {
         float currentTimePos = frChNameWidth + getTimeHorizontalPosition(currentTime) - frScrollX;
         canvas.drawRect(currentTimePos - programMargin/2, 0, currentTimePos + programMargin/2, timebarHeight, paintCurrentTime);
@@ -240,6 +253,8 @@ public class EPG extends View {
     }
 
     private void drawEPGBody(Canvas canvas, long currentTime, float verticalOffset) {
+
+        // compute initial and end channel to draw based on the scroll position
         int startChannel = (int) (frScrollY / channelHeight);
         verticalOffset -= startChannel * channelHeight;
         int endChannel = startChannel + (getHeight() - ((int) (timebarHeight + 0.5f))) / channelHeight + 1;
@@ -251,7 +266,7 @@ public class EPG extends View {
             float channelTop = (i - startChannel) * channelHeight - verticalOffset + timebarHeight;
             float channelBottom = channelTop + channelHeight;
 
-
+            // draw channel text only when channel is expanded
             if (!shortChannelMode) {
                 paintChannelText.getTextBounds(channelList[i].getName(),
                         0,
@@ -263,13 +278,13 @@ public class EPG extends View {
                         (channelHeight - textBoundaries.height()) / 2 + textBoundaries.height() + channelTop,
                         paintChannelText);
             }
-
             canvas.drawLine(0, channelBottom, getWidth(), channelBottom, paintChannelText);
 
             if (channelList[i].getIcon() != null) {
                 float iconMargin = (channelHeight - channelList[i].getIcon().getHeight()) / 2;
                 canvas.drawBitmap(channelList[i].getIcon(), iconMargin, channelTop + iconMargin, null);
             } else if (!channelList[i].isIconRequested()) {
+                // if icon has not been requested, do a network request
                 channelList[i].setIconRequested(true);
 
                 Picasso.with(context)
@@ -292,10 +307,13 @@ public class EPG extends View {
                 float programStartX = getTimeHorizontalPosition(st);
                 float programEndX = getTimeHorizontalPosition(et);
 
+                // if program start position is bigger than the screen width we can discard
+                // this item and the following programs we will be outside of the screen.
                 if (programStartX - frScrollX > getWidth()) break;
 
+                // if program end is before the start of the drawing area, we can skip it.
                 if (programEndX - frScrollX >= 0) {
-
+                    // highlight program if it is currently playing
                     if (st <= currentTime && et > currentTime) {
                         paintProgram.setColor(HIGHLIGHTED_PROGRAM_COLOR);
                         paintProgramText.setColor(Color.BLACK);
@@ -354,6 +372,7 @@ public class EPG extends View {
 
             case MotionEvent.ACTION_UP:
                 if (!dragged) {
+                    // touching inside the channel area, will toggle large/short channels
                     if (event.getX() < frChNameWidth) {
                         switchNameWidth = true;
                         invalidate();
@@ -378,15 +397,24 @@ public class EPG extends View {
         }
     }
 
+    /**
+     * Convert a timestamp into a horizontal position.
+     */
     private float getTimeHorizontalPosition(long ts) {
         long timeDifference = (ts - initialTimeValue);
         return timeDifference * timeScale;
     }
 
+    /**
+     * Convert a horizontal position into a timestamp
+     */
     private long getHorizontalPositionTime(float x) {
         return (long) ((x / timeScale) + initialTimeValue);
     }
 
+    /**
+     * Check if there is any animation that has not finished.
+     */
     private boolean missingAnimations() {
         if (Math.abs(scrollXTarget - scrollX) > ANIM_THRESHOLD) return true;
         if (Math.abs(scrollYTarget - scrollY) > ANIM_THRESHOLD) return true;
@@ -395,6 +423,9 @@ public class EPG extends View {
         return false;
     }
 
+    /**
+     * Execute logic iterations and interpolate between current and next logic iteration
+     */
     private void animateLogic() {
         long currentTime = SystemClock.elapsedRealtime();
         accTime += currentTime - timeStart;
@@ -417,6 +448,9 @@ public class EPG extends View {
         frChNameWidth = chNameWidth * (1.f - factor) + nextChNameWidth * factor;
     }
 
+    /**
+     * scroll screen by dx, dy and trigger a redraw cycle.
+     */
     private void scrollScreen(float dx, float dy) {
         scrollXTarget += dx;
         scrollYTarget += dy;
@@ -431,6 +465,9 @@ public class EPG extends View {
     }
 
 
+    /**
+     * Picaso callback for image loading
+     */
     class ChannelIconTarget implements Target {
         private Channel ch;
 
