@@ -28,6 +28,12 @@ import java.util.Locale;
 
 public class EPG extends View {
     private static final String TAG = EPG.class.getName();
+
+    private static final int BACKGROUND_COLOR = 0xFF333333;
+    private static final int PROGRAM_COLOR = 0xFF666666;
+    private static final int HIGHLIGHTED_PROGRAM_COLOR = 0xFFBCBCBC;
+    private static final int CURRENT_TIME_COLOR = 0xB4DD1030;
+
     private static final int CHANNEL_HEIGHT = 80;
     private static final float DEFAULT_TIME_SCALE = 0.0001f;
     private static final float PROGRAM_MARGIN = 4;
@@ -46,16 +52,25 @@ public class EPG extends View {
     private final Paint paintCurrentTime;
 
     private Channel[] channelList;
-    private int backgroundColor;
+    private int  backgroundColor;
 
     private float dragX;
     private float dragY;
     private boolean zooming;
+    private boolean dragged;
     private float scrollX;
     private float scrollY;
     private float scrollXTarget;
     private float scrollYTarget;
+    private float chNameWidthTarget;
+    private float chNameWidth;
+    private boolean shortChannelMode;
+    private boolean switchNameWidth;
     private float timeScale;
+
+    private float frScrollX;
+    private float frScrollY;
+    private float frChNameWidth;
 
     private long timeStart;
     private long accTime;
@@ -73,11 +88,11 @@ public class EPG extends View {
 
         this.context = context;
 
-        backgroundColor = Color.DKGRAY;
+        backgroundColor = BACKGROUND_COLOR;
         paintChannelText = new Paint();
         paintChannelText.setAntiAlias(true);
         paintChannelText.setColor(Color.WHITE);
-        paintChannelText.setTextSize(50.f);
+        paintChannelText.setTextSize(40.f);
 
         paintProgramText = new Paint();
         paintProgramText.setAntiAlias(true);
@@ -86,7 +101,6 @@ public class EPG extends View {
 
         paintProgram = new Paint();
         paintProgram.setAntiAlias(true);
-        paintProgram.setColor(Color.WHITE);
         paintProgram.setStyle(Paint.Style.FILL);
 
         paintTimeBar = new Paint();
@@ -98,8 +112,7 @@ public class EPG extends View {
         paintTimeBar.getTextBounds("88:88", 0, "88:88".length(), timeBarTextBoundaries);
 
         paintCurrentTime = new Paint();
-        paintCurrentTime.setColor(Color.RED);
-        paintCurrentTime.setAlpha(180);
+        paintCurrentTime.setColor(CURRENT_TIME_COLOR);
         paintCurrentTime.setStyle(Paint.Style.FILL);
 
 
@@ -124,7 +137,6 @@ public class EPG extends View {
             public boolean onScaleBegin(ScaleGestureDetector detector) {
                 zooming = true;
                 focusTime = getHorizontalPositionTime(scrollXTarget + detector.getFocusX());
-//                scrollCorrection = getTimeHorizontalPosition(System.currentTimeMillis()) - scrollXTarget;
                 scrollCorrection = getTimeHorizontalPosition((focusTime)) - scrollXTarget;
                 return true;
             }
@@ -148,6 +160,11 @@ public class EPG extends View {
             }
         });
 
+        chNameWidthTarget = channelHeight;
+        chNameWidth = chNameWidthTarget;
+        shortChannelMode = true;
+        switchNameWidth = false;
+
         textBoundaries = new Rect();
         timeStart = SystemClock.elapsedRealtime();
         initialTimeValue = System.currentTimeMillis() - 30 * 60 * 1000;
@@ -162,10 +179,21 @@ public class EPG extends View {
     protected void onDraw(Canvas canvas) {
         animateLogic();
 
+        if (switchNameWidth) {
+            if (shortChannelMode) {
+                chNameWidthTarget = channelHeight * 2;
+                shortChannelMode = false;
+            } else {
+                chNameWidthTarget = channelHeight;
+                shortChannelMode = true;
+            }
+            switchNameWidth = false;
+        }
+
         long currentTime = System.currentTimeMillis();
 
         drawBackground(canvas);
-        drawEPGBody(canvas, currentTime, scrollY);
+        drawEPGBody(canvas, currentTime, frScrollY);
         drawTimeBar(canvas, currentTime);
         drawCurrentTime(canvas, currentTime);
 
@@ -179,7 +207,7 @@ public class EPG extends View {
         calendar.set(Calendar.MILLISECOND, 0);
 
         long time = calendar.getTimeInMillis();
-        float x = getTimeHorizontalPosition(time) - scrollX + getWidth() / 4.f;
+        float x = getTimeHorizontalPosition(time) - frScrollX + getWidth() / 4.f;
 
         while(x < getWidth()) {
             if(x > 0) {
@@ -193,7 +221,7 @@ public class EPG extends View {
             }
 
             time += 30 * 60 * 1000;
-            x = getTimeHorizontalPosition(time) - scrollX + getWidth() / 4.f;
+            x = getTimeHorizontalPosition(time) - frScrollX + getWidth() / 4.f;
         }
 
         canvas.drawLine(0, timebarHeight, getWidth(), timebarHeight, paintTimeBar);
@@ -205,14 +233,14 @@ public class EPG extends View {
     }
 
     private void drawCurrentTime(Canvas canvas, long currentTime) {
-        float currentTimePos = getWidth() / 4.f + getTimeHorizontalPosition(currentTime) - scrollX;
+        float currentTimePos = frChNameWidth + getTimeHorizontalPosition(currentTime) - frScrollX;
         canvas.drawRect(currentTimePos - programMargin/2, 0, currentTimePos + programMargin/2, timebarHeight, paintCurrentTime);
-        canvas.clipRect(getWidth() / 4.f, 0, getWidth(), getHeight());
+        canvas.clipRect(frChNameWidth, 0, getWidth(), getHeight());
         canvas.drawRect(currentTimePos - programMargin/2, timebarHeight, currentTimePos + programMargin/2, getHeight(), paintCurrentTime);
     }
 
     private void drawEPGBody(Canvas canvas, long currentTime, float verticalOffset) {
-        int startChannel = (int) (scrollY / channelHeight);
+        int startChannel = (int) (frScrollY / channelHeight);
         verticalOffset -= startChannel * channelHeight;
         int endChannel = startChannel + (getHeight() - ((int) (timebarHeight + 0.5f))) / channelHeight + 1;
         if (endChannel >= channelList.length) endChannel = channelList.length - 1;
@@ -223,11 +251,23 @@ public class EPG extends View {
             float channelTop = (i - startChannel) * channelHeight - verticalOffset + timebarHeight;
             float channelBottom = channelTop + channelHeight;
 
-            canvas.drawText("channel " + i, 10, channelHeight/2 + (i - startChannel) * channelHeight - verticalOffset, paintChannelText);
+
+            if (!shortChannelMode) {
+                paintChannelText.getTextBounds(channelList[i].getName(),
+                        0,
+                        channelList[i].getName().length(),
+                        textBoundaries);
+
+                canvas.drawText(channelList[i].getName(),
+                        channelHeight - programMargin * 2,
+                        (channelHeight - textBoundaries.height()) / 2 + textBoundaries.height() + channelTop,
+                        paintChannelText);
+            }
+
             canvas.drawLine(0, channelBottom, getWidth(), channelBottom, paintChannelText);
 
             if (channelList[i].getIcon() != null) {
-                float iconMargin = ((channelBottom - channelTop) - channelList[i].getIcon().getHeight()) / 2;
+                float iconMargin = (channelHeight - channelList[i].getIcon().getHeight()) / 2;
                 canvas.drawBitmap(channelList[i].getIcon(), iconMargin, channelTop + iconMargin, null);
             } else if (!channelList[i].isIconRequested()) {
                 channelList[i].setIconRequested(true);
@@ -240,8 +280,8 @@ public class EPG extends View {
             }
 
             canvas.save();
-            canvas.clipRect(getWidth() / 4.f, 0, getWidth(), getHeight());
-            float horizontalOffset = getWidth() / 4.f - scrollX;
+            canvas.clipRect(frChNameWidth, 0, getWidth(), getHeight());
+            float horizontalOffset = frChNameWidth - frScrollX;
             ArrayList<Program> programs = channelList[i].getPrograms();
             for (int j = 0; j < programs.size(); j++) {
                 Program program = programs.get(j);
@@ -252,14 +292,16 @@ public class EPG extends View {
                 float programStartX = getTimeHorizontalPosition(st);
                 float programEndX = getTimeHorizontalPosition(et);
 
-                if (programStartX - scrollX > getWidth()) break;
+                if (programStartX - frScrollX > getWidth()) break;
 
-                if (programEndX - scrollX >= 0) {
+                if (programEndX - frScrollX >= 0) {
 
                     if (st <= currentTime && et > currentTime) {
-                        paintProgram.setColor(Color.YELLOW);
+                        paintProgram.setColor(HIGHLIGHTED_PROGRAM_COLOR);
+                        paintProgramText.setColor(Color.BLACK);
                     } else {
-                        paintProgram.setColor(Color.WHITE);
+                        paintProgram.setColor(PROGRAM_COLOR);
+                        paintProgramText.setColor(Color.WHITE);
                     }
 
                     canvas.drawRoundRect(horizontalOffset + programMargin + programStartX,
@@ -270,18 +312,25 @@ public class EPG extends View {
                             programMargin,
                             paintProgram);
 
+                    canvas.save();
+                    canvas.clipRect(horizontalOffset + programMargin * 2 + programStartX,
+                            channelTop + programMargin,
+                            horizontalOffset - programMargin * 2 + programEndX,
+                            channelBottom - programMargin);
+
                     paintProgramText.getTextBounds(program.getName(), 0, program.getName().length(), textBoundaries);
                     float textPosition = channelTop + textBoundaries.height() + ((channelHeight - programMargin * 2) - textBoundaries.height()) / 2;
                     canvas.drawText(program.getName(),
                                 horizontalOffset + programMargin * 2 + programStartX,
                                 textPosition,
                                 paintProgramText);
+                    canvas.restore();
                 }
             }
 
             canvas.restore();
         }
-
+        canvas.drawLine(frChNameWidth, timebarHeight, frChNameWidth, getHeight(), paintChannelText);
         canvas.restore();
     }
 
@@ -300,9 +349,17 @@ public class EPG extends View {
                 dragY = event.getY();
 
                 getParent().requestDisallowInterceptTouchEvent(true);
+                dragged = false;
                 return true;
 
             case MotionEvent.ACTION_UP:
+                if (!dragged) {
+                    if (event.getX() < frChNameWidth) {
+                        switchNameWidth = true;
+                        invalidate();
+                    }
+                }
+
                 getParent().requestDisallowInterceptTouchEvent(false);
                 return true;
 
@@ -314,6 +371,7 @@ public class EPG extends View {
 
                 dragX = newX;
                 dragY = newY;
+                dragged = true;
                 return true;
             default:
                 return false;
@@ -332,6 +390,7 @@ public class EPG extends View {
     private boolean missingAnimations() {
         if (Math.abs(scrollXTarget - scrollX) > ANIM_THRESHOLD) return true;
         if (Math.abs(scrollYTarget - scrollY) > ANIM_THRESHOLD) return true;
+        if (Math.abs(chNameWidthTarget - chNameWidth) > ANIM_THRESHOLD) return true;
 
         return false;
     }
@@ -344,15 +403,25 @@ public class EPG extends View {
         while(accTime > TIME_THRESHOLD) {
             scrollX += (scrollXTarget - scrollX) / 4.f;
             scrollY += (scrollYTarget - scrollY) / 4.f;
+            chNameWidth += (chNameWidthTarget - chNameWidth) / 4.f;
             accTime -= TIME_THRESHOLD;
         }
+
+        float factor = ((float) accTime) / TIME_THRESHOLD;
+        float nextScrollX = scrollX + (scrollXTarget - scrollX) / 4.f;
+        float nextScrollY = scrollY + (scrollYTarget - scrollY) / 4.f;
+        float nextChNameWidth = chNameWidth + (chNameWidthTarget - chNameWidth) / 4.f;
+
+        frScrollX = scrollX * (1.f - factor) + nextScrollX * factor;
+        frScrollY = scrollY * (1.f - factor) + nextScrollY * factor;
+        frChNameWidth = chNameWidth * (1.f - factor) + nextChNameWidth * factor;
     }
 
     private void scrollScreen(float dx, float dy) {
         scrollXTarget += dx;
         scrollYTarget += dy;
 
-        if (scrollXTarget < -getWidth() / 4) scrollXTarget = -getWidth() / 4;
+        if (scrollXTarget < -chNameWidth) scrollXTarget = -chNameWidth;
         if (scrollYTarget < 0) scrollYTarget = 0;
 
         float maxHeight = channelList.length * channelHeight - getHeight() + 1 + timebarHeight;
