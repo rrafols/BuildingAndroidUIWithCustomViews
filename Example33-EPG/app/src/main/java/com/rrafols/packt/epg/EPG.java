@@ -196,7 +196,7 @@ public class EPG extends View {
             x = getTimeHorizontalPosition(time) - scrollX + getWidth() / 4.f;
         }
 
-        canvas.drawLine(0, timebarHeight, getWidth(), timebarHeight, paintTimeBar);0
+        canvas.drawLine(0, timebarHeight, getWidth(), timebarHeight, paintTimeBar);
     }
 
     private void drawBackground(Canvas canvas) {
