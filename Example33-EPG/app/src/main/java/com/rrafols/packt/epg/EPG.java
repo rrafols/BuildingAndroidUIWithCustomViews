@@ -1,6 +1,7 @@
 package com.rrafols.packt.epg;
 
 import android.content.Context;
+import android.content.res.TypedArray;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -45,6 +46,11 @@ public class EPG extends View {
     private final float channelHeight;
     private final float timebarHeight;
     private final float programMargin;
+    private final int highlightedProgramColor;
+    private final int highlightedProgramTextColor;
+    private final int programColor;
+    private final int programTextColor;
+
 
     private final Paint paintTimeBar;
     private final Paint paintChannelText;
@@ -91,15 +97,12 @@ public class EPG extends View {
 
         this.context = context;
 
-        backgroundColor = BACKGROUND_COLOR;
         paintChannelText = new Paint();
         paintChannelText.setAntiAlias(true);
-        paintChannelText.setColor(Color.WHITE);
         paintChannelText.setTextSize(40.f);
 
         paintProgramText = new Paint();
         paintProgramText.setAntiAlias(true);
-        paintProgramText.setColor(Color.BLACK);
         paintProgramText.setTextSize(55.f);
 
         paintProgram = new Paint();
@@ -108,22 +111,37 @@ public class EPG extends View {
 
         paintTimeBar = new Paint();
         paintTimeBar.setTextSize(30.f);
-        paintTimeBar.setColor(Color.WHITE);
         paintTimeBar.setAntiAlias(true);
-
         timeBarTextBoundaries = new Rect();
         paintTimeBar.getTextBounds("88:88", 0, "88:88".length(), timeBarTextBoundaries);
 
         paintCurrentTime = new Paint();
-        paintCurrentTime.setColor(CURRENT_TIME_COLOR);
         paintCurrentTime.setStyle(Paint.Style.FILL);
 
-
         final float screenDensity = getResources().getDisplayMetrics().density;
-        channelHeight = CHANNEL_HEIGHT * screenDensity;
+
+        TypedArray ta = context.getTheme().obtainStyledAttributes(attrs, R.styleable.EPG, 0, 0);
+        try {
+            backgroundColor = ta.getColor(R.styleable.EPG_backgroundColor, BACKGROUND_COLOR);
+            paintChannelText.setColor(ta.getColor(R.styleable.EPG_channelTextColor, Color.WHITE));
+            paintCurrentTime.setColor(ta.getColor(R.styleable.EPG_currentTimeColor, CURRENT_TIME_COLOR));
+            paintTimeBar.setColor(ta.getColor(R.styleable.EPG_timeBarColor, Color.WHITE));
+
+            highlightedProgramColor = ta.getColor(R.styleable.EPG_highlightedProgramColor, HIGHLIGHTED_PROGRAM_COLOR);
+            programColor = ta.getColor(R.styleable.EPG_programColor, PROGRAM_COLOR);
+
+            channelHeight = ta.getFloat(R.styleable.EPG_channelHeight, CHANNEL_HEIGHT) * screenDensity;
+            programMargin = ta.getFloat(R.styleable.EPG_programMargin, PROGRAM_MARGIN) * screenDensity;
+            timebarHeight = ta.getFloat(R.styleable.EPG_timebarHeight, TIMEBAR_HEIGHT) * screenDensity;
+
+            programTextColor = ta.getColor(R.styleable.EPG_programTextColor, Color.WHITE);
+            highlightedProgramTextColor = ta.getColor(R.styleable.EPG_highlightedProgramTextColor, Color.BLACK);
+
+        } finally {
+            ta.recycle();
+        }
+
         timeScale = DEFAULT_TIME_SCALE * screenDensity;
-        programMargin = PROGRAM_MARGIN * screenDensity;
-        timebarHeight = TIMEBAR_HEIGHT * screenDensity;
 
         scrollX = 0.f;
         scrollY = 0.f;
@@ -146,7 +164,8 @@ public class EPG extends View {
 
             public boolean onScale(ScaleGestureDetector detector) {
                 timeScale *= detector.getScaleFactor();
-                timeScale = Math.max(DEFAULT_TIME_SCALE * screenDensity / 2, Math.min(timeScale, DEFAULT_TIME_SCALE * screenDensity * 4));
+                timeScale = Math.max(DEFAULT_TIME_SCALE * screenDensity / 2,
+                        Math.min(timeScale, DEFAULT_TIME_SCALE * screenDensity * 4));
 
                 // correct scroll position otherwise will move too much when zooming
                 float current = getTimeHorizontalPosition((focusTime)) - scrollXTarget;
@@ -340,11 +359,11 @@ public class EPG extends View {
                 if (programEndX - frScrollX >= 0) {
                     // highlight program if it is currently playing
                     if (st <= currentTime && et > currentTime) {
-                        paintProgram.setColor(HIGHLIGHTED_PROGRAM_COLOR);
-                        paintProgramText.setColor(Color.BLACK);
+                        paintProgram.setColor(highlightedProgramColor);
+                        paintProgramText.setColor(highlightedProgramTextColor);
                     } else {
-                        paintProgram.setColor(PROGRAM_COLOR);
-                        paintProgramText.setColor(Color.WHITE);
+                        paintProgram.setColor(programColor);
+                        paintProgramText.setColor(programTextColor);
                     }
 
                     canvas.drawRoundRect(horizontalOffset + programMargin + programStartX,
