@@ -24,6 +24,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Locale;
 
 public class EPG extends View {
@@ -41,7 +42,7 @@ public class EPG extends View {
     private static final float ANIM_THRESHOLD = 0.01f;
     private static final float TIMEBAR_HEIGHT = 18;
 
-    private final int channelHeight;
+    private final float channelHeight;
     private final float timebarHeight;
     private final float programMargin;
 
@@ -82,6 +83,8 @@ public class EPG extends View {
 
     private final long initialTimeValue;
     private final Calendar calendar;
+    private final SimpleDateFormat dateFormatter = new SimpleDateFormat("HH:mm", Locale.US);
+    private final HashMap<Long, String> dateFormatted;
 
     public EPG(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -117,7 +120,7 @@ public class EPG extends View {
 
 
         final float screenDensity = getResources().getDisplayMetrics().density;
-        channelHeight = (int) (CHANNEL_HEIGHT * screenDensity + 0.5f);
+        channelHeight = CHANNEL_HEIGHT * screenDensity;
         timeScale = DEFAULT_TIME_SCALE * screenDensity;
         programMargin = PROGRAM_MARGIN * screenDensity;
         timebarHeight = TIMEBAR_HEIGHT * screenDensity;
@@ -170,6 +173,8 @@ public class EPG extends View {
         timeStart = SystemClock.elapsedRealtime();
         initialTimeValue = System.currentTimeMillis() - 30 * 60 * 1000;
         calendar = Calendar.getInstance();
+
+        dateFormatted = new HashMap<>();
     }
 
     public void setChannelList(Channel[] channelList) {
@@ -213,17 +218,24 @@ public class EPG extends View {
         long time = calendar.getTimeInMillis();
         float x = getTimeHorizontalPosition(time) - frScrollX + getWidth() / 4.f;
 
-        while(x < getWidth()) {
-            if(x > 0) {
+        while (x < getWidth()) {
+            if (x > 0) {
                 canvas.drawLine(x, 0, x, timebarHeight, paintTimeBar);
             }
 
-            if(x + timeBarTextBoundaries.width() > 0) {
-                SimpleDateFormat dateFormatter = new SimpleDateFormat("HH:mm", Locale.US);
-                String date = dateFormatter.format(new Date(time));
+            if (x + timeBarTextBoundaries.width() > 0) {
+                String date = null;
+                if (dateFormatted.containsKey(time)) {
+                    date = dateFormatted.get(time);
+                } else {
+                    date = dateFormatter.format(new Date(time));
+                    dateFormatted.put(time, date);
+                }
+
                 canvas.drawText(date,
                         x + programMargin,
-                        (timebarHeight - timeBarTextBoundaries.height()) / 2.f + timeBarTextBoundaries.height(),
+                        (timebarHeight - timeBarTextBoundaries.height()) / 2.f
+                                + timeBarTextBoundaries.height(),
                         paintTimeBar);
             }
 
@@ -231,7 +243,11 @@ public class EPG extends View {
             x = getTimeHorizontalPosition(time) - frScrollX + getWidth() / 4.f;
         }
 
-        canvas.drawLine(0, timebarHeight, getWidth(), timebarHeight, paintTimeBar);
+        canvas.drawLine(0,
+                timebarHeight,
+                getWidth(),
+                timebarHeight,
+                paintTimeBar);
     }
 
     /**
@@ -247,17 +263,26 @@ public class EPG extends View {
      */
     private void drawCurrentTime(Canvas canvas, long currentTime) {
         float currentTimePos = frChNameWidth + getTimeHorizontalPosition(currentTime) - frScrollX;
-        canvas.drawRect(currentTimePos - programMargin/2, 0, currentTimePos + programMargin/2, timebarHeight, paintCurrentTime);
+        canvas.drawRect(currentTimePos - programMargin/2,
+                0,
+                currentTimePos + programMargin/2,
+                timebarHeight,
+                paintCurrentTime);
+
         canvas.clipRect(frChNameWidth, 0, getWidth(), getHeight());
-        canvas.drawRect(currentTimePos - programMargin/2, timebarHeight, currentTimePos + programMargin/2, getHeight(), paintCurrentTime);
+        canvas.drawRect(currentTimePos - programMargin/2,
+                timebarHeight,
+                currentTimePos + programMargin/2,
+                getHeight(),
+                paintCurrentTime);
     }
 
     private void drawEPGBody(Canvas canvas, long currentTime, float verticalOffset) {
 
-        // compute initial and end channel to draw based on the scroll position
+        // compute initial and end channel to draw based on the scroll position and screen size
         int startChannel = (int) (frScrollY / channelHeight);
         verticalOffset -= startChannel * channelHeight;
-        int endChannel = startChannel + (getHeight() - ((int) (timebarHeight + 0.5f))) / channelHeight + 1;
+        int endChannel = startChannel + (int) ((getHeight() -  timebarHeight) / channelHeight) + 1;
         if (endChannel >= channelList.length) endChannel = channelList.length - 1;
 
         canvas.save();
@@ -431,7 +456,7 @@ public class EPG extends View {
         accTime += currentTime - timeStart;
         timeStart = currentTime;
 
-        while(accTime > TIME_THRESHOLD) {
+        while (accTime > TIME_THRESHOLD) {
             scrollX += (scrollXTarget - scrollX) / 4.f;
             scrollY += (scrollYTarget - scrollY) / 4.f;
             chNameWidth += (chNameWidthTarget - chNameWidth) / 4.f;
