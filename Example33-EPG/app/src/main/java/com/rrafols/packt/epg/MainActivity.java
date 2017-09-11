@@ -2,6 +2,7 @@ package com.rrafols.packt.epg;
 
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 
 import com.rrafols.packt.epg.data.Channel;
 import com.rrafols.packt.epg.data.Program;
@@ -19,6 +20,13 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         EPG epg = (EPG) findViewById(R.id.epg_view);
+        epg.setCallback(new EPG.EPGCallback() {
+            @Override
+            public void programClicked(Channel channel, Program program) {
+                Log.d("EPG", "program clicked: " + program.getName() + " channel: " + channel.getName());
+            }
+        });
+
         populateDummyChannelList(epg);
     }
 

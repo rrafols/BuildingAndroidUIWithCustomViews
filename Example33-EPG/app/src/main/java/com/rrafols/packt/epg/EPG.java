@@ -91,6 +91,7 @@ public class EPG extends View {
     private final Calendar calendar;
     private final SimpleDateFormat dateFormatter = new SimpleDateFormat("HH:mm", Locale.US);
     private final HashMap<Long, String> dateFormatted;
+    private EPGCallback callback;
 
     public EPG(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -157,7 +158,7 @@ public class EPG extends View {
             @Override
             public boolean onScaleBegin(ScaleGestureDetector detector) {
                 zooming = true;
-                focusTime = getHorizontalPositionTime(scrollXTarget + detector.getFocusX());
+                focusTime = getHorizontalPositionTime(scrollXTarget + detector.getFocusX() - frChNameWidth);
                 scrollCorrection = getTimeHorizontalPosition((focusTime)) - scrollXTarget;
                 return true;
             }
@@ -194,6 +195,10 @@ public class EPG extends View {
         calendar = Calendar.getInstance();
 
         dateFormatted = new HashMap<>();
+    }
+
+    public void setCallback(EPGCallback callback) {
+        this.callback = callback;
     }
 
     public void setChannelList(Channel[] channelList) {
@@ -420,6 +425,8 @@ public class EPG extends View {
                     if (event.getX() < frChNameWidth) {
                         switchNameWidth = true;
                         invalidate();
+                    } else {
+                        clickProgram(event.getX(), event.getY());
                     }
                 }
 
@@ -438,6 +445,22 @@ public class EPG extends View {
                 return true;
             default:
                 return false;
+        }
+    }
+
+    private void clickProgram(float x, float y) {
+        long ts = getHorizontalPositionTime(scrollXTarget + x - frChNameWidth);
+        int channel = (int) ((y + frScrollY - timebarHeight) / channelHeight);
+
+        ArrayList<Program> programs = channelList[channel].getPrograms();
+        for (int i = 0; i < programs.size(); i++) {
+            Program pr = programs.get(i);
+            if (ts >= pr.getStartTime() && ts < pr.getEndTime()) {
+                if (callback != null) {
+                    callback.programClicked(channelList[channel], pr);
+                }
+                break;
+            }
         }
     }
 
@@ -530,5 +553,9 @@ public class EPG extends View {
 
         @Override
         public void onPrepareLoad(Drawable placeHolderDrawable) {}
+    }
+
+    interface EPGCallback {
+        void programClicked(Channel channel, Program program);
     }
 }
