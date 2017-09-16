@@ -22,63 +22,74 @@ public class Chart extends View {
 
     private long timeStart;
     private long accTime;
-    private Context context;
     private float[] dataPoints;
-    private float minValue;
-    private float maxValue;
-    private float verticalDelta;
     private Paint linePaint;
+    private Paint circlePaint;
     private Path graphPath;
 
     public Chart(Context context, AttributeSet attrs) {
         super(context, attrs);
 
-        this.context = context;
-
         linePaint = new Paint();
         linePaint.setAntiAlias(true);
-        linePaint.setColor(0xffff0000);
-        linePaint.setStrokeWidth(3.f);
-        linePaint.setTextSize(50.f);
+        linePaint.setColor(0xffffffff);
+        linePaint.setStrokeWidth(8.f);
         linePaint.setStyle(Paint.Style.STROKE);
+
+        circlePaint = new Paint();
+        circlePaint.setAntiAlias(true);
+        circlePaint.setColor(0xffffffff);
+        circlePaint.setStyle(Paint.Style.FILL);
     }
 
-    public void setDataPoints(float[] dataPoints) {
-        this.dataPoints = dataPoints;
+    // make a copy of the data as the original array content might change.
+    public void setDataPoints(float[] originalData) {
+        dataPoints = new float[originalData.length];
 
-        minValue = Float.MAX_VALUE;
-        maxValue = Float.MIN_VALUE;
+        float minValue = Float.MAX_VALUE;
+        float maxValue = Float.MIN_VALUE;
         for (int i = 0; i < dataPoints.length; i++) {
+            dataPoints[i] = originalData[i];
             if (dataPoints[i] < minValue) minValue = dataPoints[i];
             if (dataPoints[i] > maxValue) maxValue = dataPoints[i];
         }
-        verticalDelta = maxValue - minValue;
+        float verticalDelta = maxValue - minValue;
+
+        for (int i = 0; i < dataPoints.length; i++) {
+            dataPoints[i] = (dataPoints[i] - minValue) / verticalDelta;
+        }
 
         postInvalidate();
     }
-//
+
 //    @Override
 //    protected void onDraw(Canvas canvas) {
+//        canvas.drawARGB(255,0 ,0 ,0);
+//        if (LAYOUT_DIRECTION_LTR == getLayoutDirection()) {
+//
+//        } else {
+//
+//        }
 //        animateLogic();
 //
+//        int leftPadding = getPaddingLeft();
+//        int topPadding = getPaddingTop();
 //
-//        int width = canvas.getWidth() - getPaddingStart() - getPaddingEnd();
-//        int height = canvas.getHeight() - getPaddingTop() - getPaddingEnd();
-//        canvas.drawText(width + ", " + height, getPaddingStart(), 100 + getPaddingTop(), linePaint);
-//
+//        int width = canvas.getWidth() - leftPadding - getPaddingEnd();
+//        int height = canvas.getHeight() - topPadding - getPaddingBottom();
 //
 //        float lastX = getPaddingStart();
-//        float lastY = height * (dataPoints[0] / verticalDelta) + getPaddingTop();
+//        float lastY = height * dataPoints[0] + topPadding;
 //        for (int i = 1; i < dataPoints.length; i++) {
-//            float y = height * (dataPoints[i] / verticalDelta) + getPaddingTop();
-//            float x = width * (((float) i) / dataPoints.length) + getPaddingStart();
+//            float y = height * dataPoints[i] + topPadding;
+//            float x = width * (((float) i) / dataPoints.length) + leftPadding;
 //
 //            canvas.drawLine(lastX, lastY, x, y, linePaint);
-//            canvas.drawPoint(lastX, lastY, linePaint);
+//            canvas.drawCircle(lastX, lastY, 10, circlePaint);
 //            lastX = x;
 //            lastY = y;
 //        }
-//        canvas.drawPoint(lastX, lastY, linePaint);
+//        canvas.drawCircle(lastX, lastY, 10, circlePaint);
 //
 //        if (missingAnimations()) invalidate();
 //    }
@@ -87,20 +98,22 @@ public class Chart extends View {
     protected void onDraw(Canvas canvas) {
         animateLogic();
 
+        canvas.drawARGB(255,0 ,0 ,0);
 
-        int width = canvas.getWidth() - getPaddingStart() - getPaddingEnd();
-        int height = canvas.getHeight() - getPaddingTop() - getPaddingEnd();
-        canvas.drawText(width + ", " + height, getPaddingStart(), 100 + getPaddingTop(), linePaint);
+        int leftPadding = getPaddingLeft();
+        int topPadding = getPaddingTop();
+
+        int width = canvas.getWidth() - leftPadding - getPaddingEnd();
+        int height = canvas.getHeight() - topPadding - getPaddingBottom();
 
         if (graphPath == null) {
             graphPath = new Path();
 
-            graphPath.moveTo(getPaddingStart(),
-                    height * (dataPoints[0] / verticalDelta) + getPaddingTop());
+            graphPath.moveTo(leftPadding,height * dataPoints[0] + topPadding);
 
             for (int i = 1; i < dataPoints.length; i++) {
-                float y = height * (dataPoints[i] / verticalDelta) + getPaddingTop();
-                float x = width * (((float) i) / dataPoints.length) + getPaddingStart();
+                float y = height * dataPoints[i] + topPadding;
+                float x = width * (((float) i + 1) / dataPoints.length) + leftPadding;
 
                 graphPath.lineTo(x, y);
             }
