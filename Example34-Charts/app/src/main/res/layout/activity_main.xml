@@ -9,7 +9,7 @@
     <com.rrafols.packt.chart.Chart
         android:layout_margin="16dp"
         android:padding="10dp"
-        android:id="@+id/epg_view"
+        android:id="@+id/chart_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 

@@ -10,9 +10,9 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        Chart chart = (Chart) findViewById(R.id.epg_view);
+        Chart chart = (Chart) findViewById(R.id.chart_view);
 
-        float[] data = new float[20];
+        float[] data = new float[15];
         for(int i = 0; i < data.length; i++) {
             data[i] = (float) Math.random() * 10.f;
         }
