@@ -10,6 +10,7 @@
     tools:context="com.packt.rrafols.draw.MainActivity">
 
     <com.packt.rrafols.draw.GLDrawer
+        android:id="@+id/gldrawer"
         android:layout_width="match_parent"
         android:layout_height="match_parent"/>
 </LinearLayout>

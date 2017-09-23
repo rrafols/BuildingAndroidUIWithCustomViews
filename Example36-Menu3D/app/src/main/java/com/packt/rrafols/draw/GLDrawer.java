@@ -7,10 +7,11 @@ import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
 import android.opengl.GLUtils;
 import android.opengl.Matrix;
-import android.os.SystemClock;
+import android.support.v4.view.GestureDetectorCompat;
 import android.util.AttributeSet;
-import android.util.Log;
+import android.view.GestureDetector;
 import android.view.MotionEvent;
+import android.widget.Scroller;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -22,63 +23,109 @@ import javax.microedition.khronos.opengles.GL10;
 
 public class GLDrawer extends GLSurfaceView {
     private static final String TAG = GLDrawer.class.toString();
-    private static final int TIME_THRESHOLD = 16;
-    private long timeStart;
-    private long accTime;
-    private float angle = 0.f;
-    private float angleTarget = 0.f;
-    private float angleFr = 0.f;
-    private float dragX;
-    private float dragY;
-    private boolean dragged;
     private GLRenderer glRenderer;
+    private GestureDetectorCompat gestureDetector;
+    private Scroller scroller;
+    private OnMenuClickedListener listener;
 
     public GLDrawer(Context context, AttributeSet attributeSet) {
         super(context, attributeSet);
 
         setEGLContextClientVersion(2);
 
+        listener = null;
+        gestureDetector = new GestureDetectorCompat(context, new MenuGestureListener());
+        scroller = new Scroller(context);
         glRenderer = new GLRenderer();
         setRenderer(glRenderer);
     }
 
+    public void setOnMenuClickedListener(OnMenuClickedListener listener) {
+        this.listener = listener;
+    }
+
+    public void setColors(int[] faceColors) {
+        glRenderer.setColors(faceColors);
+    }
+
     class GLRenderer implements GLSurfaceView.Renderer {
         private float quadCoords[] = {
-                -1.f, -1.f, -1.0f,
-                -1.f,  1.f, -1.0f,
-                 1.f,  1.f, -1.0f,
-                 1.f, -1.f, -1.0f,
+                -1.f, -1.f, -1.0f,  // 0
+                -1.f,  1.f, -1.0f,  // 1
+                 1.f,  1.f, -1.0f,  // 2
+                 1.f, -1.f, -1.0f,  // 3
 
-                -1.f, -1.f,  1.0f,
-                -1.f,  1.f,  1.0f,
-                 1.f,  1.f,  1.0f,
-                 1.f, -1.f,  1.0f};
+                -1.f, -1.f,  1.0f,  // 4
+                -1.f,  1.f,  1.0f,  // 5
+                 1.f,  1.f,  1.0f,  // 6
+                 1.f, -1.f,  1.0f,   // 7
+
+                -1.f, -1.f, -1.0f,  // 8 - 0
+                -1.f, -1.f,  1.0f,  // 9 - 4
+                 1.f, -1.f,  1.0f,  // 10 - 7
+                 1.f, -1.f, -1.0f,  // 11 - 3
+
+                -1.f,  1.f, -1.0f,  // 12 - 1
+                -1.f,  1.f,  1.0f,  // 13 - 5
+                 1.f,  1.f,  1.0f,  // 14 - 6
+                 1.f,  1.f, -1.0f,  // 15 - 2
+
+                -1.f, -1.f, -1.0f,  // 16 - 0
+                -1.f, -1.f,  1.0f,  // 17 - 4
+                -1.f,  1.f,  1.0f,  // 18 - 5
+                -1.f,  1.f, -1.0f,  // 19 - 1
+
+                 1.f, -1.f, -1.0f,  // 20 - 3
+                 1.f, -1.f,  1.0f,  // 21 - 7
+                 1.f,  1.f,  1.0f,  // 22 - 6
+                 1.f,  1.f, -1.0f   // 23 - 2
+        };
 
         private short[] index = {
                 0, 1, 2,        // front
                 0, 2, 3,        // front
                 4, 5, 6,        // back
                 4, 6, 7,        // back
-                0, 4, 7,        // top
-                0, 3, 7,        // top
-                1, 5, 6,        // bottom
-                1, 2, 6,        // bottom
-                0, 4, 5,        // left
-                0, 1, 5,        // left
-                3, 7, 6,        // right
-                3, 2, 6         // right
+                8, 9,10,        // top
+                8,11,10,        // top
+               12,13,14,        // bottom
+               12,15,14,        // bottom
+               16,17,18,        // left
+               16,19,18,        // left
+               20,21,22,        // right
+               20,23,22         // right
         };
 
-        private float texCoords[] = {
-                1.f, 1.f,
-                1.f, 0.f,
-                0.f, 0.f,
-                0.f, 1.f,
+        float colors[] = {
+                0.0f, 1.0f, 0.0f, 1.0f,
+                0.0f, 1.0f, 0.0f, 1.0f,
+                0.0f, 1.0f, 0.0f, 1.0f,
+                0.0f, 1.0f, 0.0f, 1.0f,
 
-                1.f, 1.f,
-                1.f, 0.f,
-                0.f, 0.f,
-                0.f, 1.f,
+                0.0f, 0.0f, 1.0f, 1.0f,
+                0.0f, 0.0f, 1.0f, 1.0f,
+                0.0f, 0.0f, 1.0f, 1.0f,
+                0.0f, 0.0f, 1.0f, 1.0f,
+
+                0.0f, 0.0f, 0.0f, 1.0f,
+                0.0f, 0.0f, 0.0f, 1.0f,
+                0.0f, 0.0f, 0.0f, 1.0f,
+                0.0f, 0.0f, 0.0f, 1.0f,
+
+                1.0f, 1.0f, 1.0f, 1.0f,
+                1.0f, 1.0f, 1.0f, 1.0f,
+                1.0f, 1.0f, 1.0f, 1.0f,
+                1.0f, 1.0f, 1.0f, 1.0f,
+
+                1.0f, 1.0f, 0.0f, 1.0f,
+                1.0f, 1.0f, 0.0f, 1.0f,
+                1.0f, 1.0f, 0.0f, 1.0f,
+                1.0f, 1.0f, 0.0f, 1.0f,
+
+                1.0f, 0.0f, 1.0f, 1.0f,
+                1.0f, 0.0f, 1.0f, 1.0f,
+                1.0f, 0.0f, 1.0f, 1.0f,
+                1.0f, 0.0f, 1.0f, 1.0f
         };
 
         private final float[] mMVPMatrix = new float[16];
@@ -90,34 +137,29 @@ public class GLDrawer extends GLSurfaceView {
         private final String vertexShaderCode =
                 "uniform mat4 uMVPMatrix;" +
                 "attribute vec4 vPosition;" +
-                "attribute vec2 aTex;" +
-                "varying vec2 vTex;" +
+                "attribute vec4 aColor;" +
+                "varying vec4 vColor;" +
                 "void main() {" +
                 "  gl_Position = uMVPMatrix * vPosition;" +
-                "  vTex = aTex;" +
+                "  vColor = aColor;" +
                 "}";
 
         private final String fragmentShaderCode =
                 "precision mediump float;" +
-                "uniform sampler2D sTex;" +
-                "varying vec2 vTex;" +
+                "varying vec4 vColor;" +
                 "void main() {" +
-                "  gl_FragColor = texture2D(sTex, vTex);" +
+                "  gl_FragColor = vColor;" +
                 "}";
 
         private FloatBuffer vertexBuffer;
         private ShortBuffer indexBuffer;
-        private FloatBuffer texBuffer;
+        private FloatBuffer colorBuffer;
         private int shaderProgram;
-        private int textureId;
 
         @Override
         public void onSurfaceCreated(GL10 unused, EGLConfig config) {
             initBuffers();
             initShaders();
-
-            textureId = loadTexture(R.drawable.texture);
-            timeStart = SystemClock.elapsedRealtime();
         }
 
         private void initBuffers() {
@@ -135,12 +177,12 @@ public class GLDrawer extends GLSurfaceView {
             indexBuffer.put(index);
             indexBuffer.position(0);
 
-            ByteBuffer tbb = ByteBuffer.allocateDirect(texCoords.length * (Float.SIZE / 8));
-            tbb.order(ByteOrder.nativeOrder());
+            ByteBuffer cbb = ByteBuffer.allocateDirect(colors.length * (Float.SIZE / 8));
+            cbb.order(ByteOrder.nativeOrder());
 
-            texBuffer = tbb.asFloatBuffer();
-            texBuffer.put(texCoords);
-            texBuffer.position(0);
+            colorBuffer = cbb.asFloatBuffer();
+            colorBuffer.put(colors);
+            colorBuffer.position(0);
         }
 
         private void initShaders() {
@@ -153,6 +195,43 @@ public class GLDrawer extends GLSurfaceView {
             GLES20.glLinkProgram(shaderProgram);
         }
 
+        private float[] hexToRGBA(int color) {
+            float[] out = new float[4];
+
+            int a = (color >> 24) & 0xff;
+            int r = (color >> 16) & 0xff;
+            int g = (color >>  8) & 0xff;
+            int b = (color      ) & 0xff;
+
+            out[0] = ((float) r) / 255.f;
+            out[1] = ((float) g) / 255.f;
+            out[2] = ((float) b) / 255.f;
+            out[3] = ((float) a) / 255.f;
+
+            System.out.println(out[0] + "," + out[1] + "," + out[2] + "," + out[3]);
+            return out;
+        }
+
+        private void setColors(int[] faceColors) {
+            colors = new float[4 * 4 * faceColors.length];
+            int wOffset = 0;
+            for (int faceColor : faceColors) {
+                float[] color = hexToRGBA(faceColor);
+                for(int j = 0; j < 4; j++) {
+                    colors[wOffset++] = color[0];
+                    colors[wOffset++] = color[1];
+                    colors[wOffset++] = color[2];
+                    colors[wOffset++] = color[3];
+                }
+            }
+            ByteBuffer cbb = ByteBuffer.allocateDirect(colors.length * (Float.SIZE / 8));
+            cbb.order(ByteOrder.nativeOrder());
+
+            colorBuffer = cbb.asFloatBuffer();
+            colorBuffer.put(colors);
+            colorBuffer.position(0);
+        }
+
         @Override
         public void onSurfaceChanged(GL10 unused, int width, int height) {
             GLES20.glViewport(0, 0, width, height);
@@ -163,7 +242,18 @@ public class GLDrawer extends GLSurfaceView {
 
         @Override
         public void onDrawFrame(GL10 unused) {
-            animateLogic();
+            scroller.computeScrollOffset();
+            if (scroller.isFinished()) {
+                int lastX = scroller.getCurrX();
+                int modulo = lastX % 90;
+                int snapX = (lastX / 90) * 90;
+                if (modulo >= 45) snapX += 90;
+                if (modulo <- 45) snapX -= 90;
+
+                if (lastX != snapX) {
+                    scroller.startScroll(lastX, 0, snapX - lastX, 0);
+                }
+            }
 
             GLES20.glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
             GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
@@ -173,9 +263,10 @@ public class GLDrawer extends GLSurfaceView {
                     0f, 0f, 0f,
                     0f, 1.0f, 0.0f);
 
+
             Matrix.multiplyMM(mMVPMatrix, 0, mProjectionMatrix, 0, mViewMatrix, 0);
-            Matrix.rotateM(mMVPMatrix, 0, angleFr, 0.f, 1.f, 0.f);
-            Matrix.rotateM(mMVPMatrix, 0, 95.f, 1.f, 0.f, 0.f);
+            Matrix.rotateM(mMVPMatrix, 0, scroller.getCurrX(), 0.f, 1.f, 0.f);
+            Matrix.rotateM(mMVPMatrix, 0, 5.f, 1.f, 0.f, 0.f);
 
 
             GLES20.glUseProgram(shaderProgram);
@@ -186,77 +277,30 @@ public class GLDrawer extends GLSurfaceView {
                     GLES20.GL_FLOAT, false,
                     0, vertexBuffer);
 
-            int texCoordHandle = GLES20.glGetAttribLocation(shaderProgram, "aTex");
-            GLES20.glVertexAttribPointer(texCoordHandle, 2,
+            int colorHandle = GLES20.glGetAttribLocation(shaderProgram, "aColor");
+            GLES20.glVertexAttribPointer(colorHandle, 4,
                     GLES20.GL_FLOAT, false,
-                    0, texBuffer);
+                    4 * 4, colorBuffer);
 
             int mMVPMatrixHandle = GLES20.glGetUniformLocation(shaderProgram, "uMVPMatrix");
 
             GLES20.glUniformMatrix4fv(mMVPMatrixHandle, 1, false, mMVPMatrix, 0);
 
-            int texHandle = GLES20.glGetUniformLocation(shaderProgram, "sTex");
-            GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
-            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId);
-            GLES20.glUniform1i(texHandle, 0);
-
             GLES20.glEnable(GLES20.GL_DEPTH_TEST);
-            GLES20.glEnableVertexAttribArray(texHandle);
+            GLES20.glEnableVertexAttribArray(colorHandle);
             GLES20.glEnableVertexAttribArray(positionHandle);
             GLES20.glDrawElements(
                     GLES20.GL_TRIANGLES, index.length,
                     GLES20.GL_UNSIGNED_SHORT, indexBuffer);
 
             GLES20.glDisableVertexAttribArray(positionHandle);
-            GLES20.glDisableVertexAttribArray(texHandle);
             GLES20.glDisable(GLES20.GL_DEPTH_TEST);
         }
     }
 
-    private void animateLogic() {
-        long currentTime = SystemClock.elapsedRealtime();
-        accTime += currentTime - timeStart;
-        timeStart = currentTime;
-
-        while (accTime > TIME_THRESHOLD) {
-            angle += (angleTarget - angle) / 4.f;
-            accTime -= TIME_THRESHOLD;
-        }
-
-        float factor = ((float) accTime) / TIME_THRESHOLD;
-        float nextAngle = angle + (angleTarget - angle) / 4.f;
-
-        angleFr = angle * (1.f - factor) + nextAngle * factor;
-    }
-
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        switch(event.getAction()) {
-            case MotionEvent.ACTION_DOWN:
-                dragX = event.getX();
-                dragY = event.getY();
-
-                getParent().requestDisallowInterceptTouchEvent(true);
-                dragged = false;
-                return true;
-
-            case MotionEvent.ACTION_UP:
-                getParent().requestDisallowInterceptTouchEvent(false);
-                return true;
-
-            case MotionEvent.ACTION_MOVE:
-                float newX = event.getX();
-                float newY = event.getY();
-
-                angleTarget -= (dragX - newX) / 3.f;
-
-                dragX = newX;
-                dragY = newY;
-                dragged = true;
-                return true;
-            default:
-                return false;
-        }
+        return gestureDetector.onTouchEvent(event);
     }
 
     private int loadTexture(int resId) {
@@ -303,5 +347,49 @@ public class GLDrawer extends GLSurfaceView {
         GLES20.glCompileShader(shader);
 
         return shader;
+    }
+
+    class MenuGestureListener extends GestureDetector.SimpleOnGestureListener {
+
+        @Override
+        public boolean onDown(MotionEvent e) {
+            scroller.forceFinished(true);
+            return true;
+        }
+
+        @Override
+        public boolean onSingleTapUp(MotionEvent e) {
+            scroller.computeScrollOffset();
+            int angle = scroller.getCurrX();
+            int face = (angle / 90) % 4;
+            if (face < 0) face += 4;
+
+            if (listener != null) listener.menuClicked(face);
+            return true;
+        }
+
+        @Override
+        public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
+            scroller.computeScrollOffset();
+            int lastX = scroller.getCurrX();
+
+            scroller.forceFinished(true);
+            scroller.startScroll(lastX, 0, -(int) (distanceX + 0.5f), 0);
+            return true;
+        }
+
+        @Override
+        public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
+            scroller.computeScrollOffset();
+            int lastX = scroller.getCurrX();
+
+            scroller.forceFinished(true);
+            scroller.fling(lastX, 0, (int) (velocityX/4.f), 0, -360*100, 360*100, 0,0 );
+            return true;
+        }
+    }
+
+    interface OnMenuClickedListener {
+        void menuClicked(int option);
     }
 }
