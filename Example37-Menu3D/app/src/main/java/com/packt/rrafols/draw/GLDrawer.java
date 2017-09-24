@@ -30,6 +30,8 @@ public class GLDrawer extends GLSurfaceView {
     private GestureDetectorCompat gestureDetector;
     private Scroller scroller;
     private OnMenuClickedListener listener;
+    private float faceAngle;
+    private int numOptions;
 
     public GLDrawer(Context context, AttributeSet attributeSet) {
         super(context, attributeSet);
@@ -52,6 +54,8 @@ public class GLDrawer extends GLSurfaceView {
     }
 
     public void setNumOptions(int options) {
+        this.numOptions = options;
+
         double halfAngle = Math.PI / options;
         float[] coords = new float[options * 3 * 4];
         int offset = 0;
@@ -100,7 +104,6 @@ public class GLDrawer extends GLSurfaceView {
 
     class GLRenderer implements GLSurfaceView.Renderer {
         private int options = 4;
-        private float faceAngle = 360.f / options;
         private float quadCoords[] = {
                 -1.f, -1.f, -1.0f,  // 0
                 -1.f,  1.f, -1.0f,  // 1
@@ -481,7 +484,7 @@ public class GLDrawer extends GLSurfaceView {
                 GLES20.glDisableVertexAttribArray(positionHandle);
                 GLES20.glDisableVertexAttribArray(texHandle);
 
-                Matrix.rotateM(mMVPMatrix, 0, faceAngle, 0.f, 1.f, 0.f);
+                Matrix.rotateM(mMVPMatrix, 0, -faceAngle, 0.f, 1.f, 0.f);
             }
 
             GLES20.glDisable(GLES20.GL_BLEND);
@@ -602,8 +605,8 @@ public class GLDrawer extends GLSurfaceView {
         public boolean onSingleTapUp(MotionEvent e) {
             scroller.computeScrollOffset();
             int angle = scroller.getCurrX();
-            int face = (angle / 90) % 4;
-            if (face < 0) face += 4;
+            int face = (angle / (int) faceAngle) % numOptions;
+            if (face < 0) face += numOptions;
 
             if (listener != null) listener.menuClicked(face);
             return true;

@@ -16,7 +16,7 @@ public class MainActivity extends AppCompatActivity {
         glDrawer.setOnMenuClickedListener(new GLDrawer.OnMenuClickedListener() {
             @Override
             public void menuClicked(int option) {
-                Log.i("Example37-Menu3D", "option clicked " + option);
+                Log.i("Example37-Menu3D", "option clicked " + (option + 1)) ;
             }
         });
         glDrawer.setColors(new int[] {
