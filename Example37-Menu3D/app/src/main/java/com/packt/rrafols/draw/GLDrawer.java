@@ -199,15 +199,17 @@ public class GLDrawer extends GLSurfaceView {
         private FloatBuffer texBuffer;
         private int shaderProgram;
         private int shaderTextProgram;
-        private int textureId;
+        private int[] textureId;
 
         @Override
         public void onSurfaceCreated(GL10 unused, EGLConfig config) {
             initBuffers();
             initShaders();
 
-//            textureId = loadTexture(R.drawable.android_texture);
-            textureId = generateTextureFromText("Wassaaa!");
+            textureId = new int[4];
+            for (int i = 0; i < textureId.length; i++) {
+                textureId[i] = generateTextureFromText("Option " + (i + 1));
+            }
         }
 
         private void initBuffers() {
@@ -403,13 +405,13 @@ public class GLDrawer extends GLSurfaceView {
 
             int texHandle = GLES20.glGetUniformLocation(shaderTextProgram, "sTex");
             GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
-            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId);
-            GLES20.glUniform1i(texHandle, 0);
-
             GLES20.glEnable(GLES20.GL_BLEND);
             GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
 
             for (int i = 0; i < 4; i++) {
+                GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId[i]);
+                GLES20.glUniform1i(texHandle, 0);
+
                 mMVPMatrixHandle = GLES20.glGetUniformLocation(shaderTextProgram, "uMVPMatrix");
                 GLES20.glUniformMatrix4fv(mMVPMatrixHandle, 1, false, mMVPMatrix, 0);
 
@@ -468,14 +470,20 @@ public class GLDrawer extends GLSurfaceView {
         textPaint.getTextBounds(text, 0, text.length(), textBoundaries);
 
         Canvas canvas = new Canvas(out);
-        canvas.drawText(text,
-                (canvas.getWidth() - textBoundaries.width()) / 2.f,
-                (canvas.getHeight() - textBoundaries.height()) / 2.f + textBoundaries.height(),
-                textPaint);
+        for (int i = 0; i < 2; i++) {
+            canvas.drawText(text,
+                    (canvas.getWidth() - textBoundaries.width()) / 2.f,
+                    (canvas.getHeight() - textBoundaries.height()) / 2.f + textBoundaries.height(),
+                    textPaint);
+
+            textPaint.setColor(0xff000000);
+            textPaint.setStyle(Paint.Style.STROKE);
+        }
 
 //        uncomment the following lines for debug information
 
 //        textPaint.setStyle(Paint.Style.STROKE);
+//        textPaint.setColor(0xffffffff);
 //        canvas.drawLine(0, 0, 512,0, textPaint);
 //        canvas.drawLine(0, 511, 512,511, textPaint);
 //        canvas.drawLine(0, 0, 0,511, textPaint);
