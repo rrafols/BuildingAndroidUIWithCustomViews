@@ -207,8 +207,6 @@ public class GLDrawer extends GLSurfaceView {
             out[1] = ((float) g) / 255.f;
             out[2] = ((float) b) / 255.f;
             out[3] = ((float) a) / 255.f;
-
-            System.out.println(out[0] + "," + out[1] + "," + out[2] + "," + out[3]);
             return out;
         }
 
