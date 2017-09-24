@@ -56,8 +56,11 @@ public class GLDrawer extends GLSurfaceView {
         float[] coords = new float[options * 3 * 4];
         int offset = 0;
         for (int i = 0; i < options; i++) {
-            float angle = (float) (i * 2.f * Math.PI / options - Math.PI / 2.f - halfAngle);
-            float nextAngle = (float) ((i + 1) * 2.f * Math.PI / options - Math.PI / 2.f - halfAngle);
+            float angle = (float) (i * 2.f * Math.PI / options
+                    - Math.PI / 2.f - halfAngle);
+
+            float nextAngle = (float) ((i + 1) * 2.f * Math.PI / options
+                    - Math.PI / 2.f - halfAngle);
 
             float x0 = (float) Math.cos(angle) * 1.2f;
             float x1 = (float) Math.cos(nextAngle) * 1.2f;
