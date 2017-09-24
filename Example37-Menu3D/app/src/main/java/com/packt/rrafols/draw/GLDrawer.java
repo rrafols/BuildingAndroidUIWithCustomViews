@@ -51,7 +51,53 @@ public class GLDrawer extends GLSurfaceView {
         glRenderer.setColors(faceColors);
     }
 
+    public void setNumOptions(int options) {
+        double halfAngle = Math.PI / options;
+        float[] coords = new float[options * 3 * 4];
+        int offset = 0;
+        for (int i = 0; i < options; i++) {
+            float angle = (float) (i * 2.f * Math.PI / options - Math.PI / 2.f - halfAngle);
+            float nextAngle = (float) ((i + 1) * 2.f * Math.PI / options - Math.PI / 2.f - halfAngle);
+
+            float x0 = (float) Math.cos(angle) * 1.2f;
+            float x1 = (float) Math.cos(nextAngle) * 1.2f;
+            float z0 = (float) Math.sin(angle) * 1.2f;
+            float z1 = (float) Math.sin(nextAngle) * 1.2f;
+
+            coords[offset++] = x0;
+            coords[offset++] = -1.f;
+            coords[offset++] = z0;
+
+            coords[offset++] = x1;
+            coords[offset++] = -1.f;
+            coords[offset++] = z1;
+
+            coords[offset++] = x0;
+            coords[offset++] = 1.f;
+            coords[offset++] = z0;
+
+            coords[offset++] = x1;
+            coords[offset++] = 1.f;
+            coords[offset++] = z1;
+        }
+
+        short[] index = new short[options * 6];
+        for (int i = 0; i < options; i++) {
+            index[i * 6 + 0] = (short) (i * 4 + 0);
+            index[i * 6 + 1] = (short) (i * 4 + 1);
+            index[i * 6 + 2] = (short) (i * 4 + 3);
+
+            index[i * 6 + 3] = (short) (i * 4 + 0);
+            index[i * 6 + 4] = (short) (i * 4 + 2);
+            index[i * 6 + 5] = (short) (i * 4 + 3);
+        }
+
+        glRenderer.setCoordinates(options, coords, index);
+    }
+
     class GLRenderer implements GLSurfaceView.Renderer {
+        private int options = 4;
+        private float faceAngle = 360.f / options;
         private float quadCoords[] = {
                 -1.f, -1.f, -1.0f,  // 0
                 -1.f,  1.f, -1.0f,  // 1
@@ -206,10 +252,12 @@ public class GLDrawer extends GLSurfaceView {
             initBuffers();
             initShaders();
 
-            textureId = new int[4];
+            textureId = new int[options];
             for (int i = 0; i < textureId.length; i++) {
                 textureId[i] = generateTextureFromText("Option " + (i + 1));
             }
+
+            faceAngle = 360.f / options;
         }
 
         private void initBuffers() {
@@ -306,8 +354,14 @@ public class GLDrawer extends GLSurfaceView {
             return out;
         }
 
+        private void setCoordinates(int options, float[] coords, short[] index) {
+            this.quadCoords = coords;
+            this.index = index;
+            this.options = options;
+        }
+
         private void setColors(int[] faceColors) {
-            colors = new float[4 * 4 * faceColors.length];
+            colors = new float[options * 4 * faceColors.length];
             int wOffset = 0;
             for (int faceColor : faceColors) {
                 float[] color = hexToRGBA(faceColor);
@@ -339,10 +393,10 @@ public class GLDrawer extends GLSurfaceView {
             scroller.computeScrollOffset();
             if (scroller.isFinished()) {
                 int lastX = scroller.getCurrX();
-                int modulo = lastX % 90;
-                int snapX = (lastX / 90) * 90;
-                if (modulo >= 45) snapX += 90;
-                if (modulo <- 45) snapX -= 90;
+                int modulo = lastX % (int) faceAngle;
+                int snapX = (lastX / ((int) faceAngle)) * ((int) faceAngle);
+                if (modulo >= faceAngle / 2) snapX += (int) faceAngle;
+                if (modulo <- faceAngle / 2) snapX -= (int) faceAngle;
 
                 if (lastX != snapX) {
                     scroller.startScroll(lastX, 0, snapX - lastX, 0);
@@ -408,7 +462,7 @@ public class GLDrawer extends GLSurfaceView {
             GLES20.glEnable(GLES20.GL_BLEND);
             GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
 
-            for (int i = 0; i < 4; i++) {
+            for (int i = 0; i < options; i++) {
                 GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textureId[i]);
                 GLES20.glUniform1i(texHandle, 0);
 
@@ -424,7 +478,7 @@ public class GLDrawer extends GLSurfaceView {
                 GLES20.glDisableVertexAttribArray(positionHandle);
                 GLES20.glDisableVertexAttribArray(texHandle);
 
-                Matrix.rotateM(mMVPMatrix, 0, 90.f, 0.f, 1.f, 0.f);
+                Matrix.rotateM(mMVPMatrix, 0, faceAngle, 0.f, 1.f, 0.f);
             }
 
             GLES20.glDisable(GLES20.GL_BLEND);
