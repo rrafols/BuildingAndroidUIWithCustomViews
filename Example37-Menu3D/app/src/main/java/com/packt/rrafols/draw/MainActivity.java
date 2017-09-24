@@ -28,6 +28,6 @@ public class MainActivity extends AppCompatActivity {
                 0xffffe74c
         });
 
-        glDrawer.setNumOptions(3);
+        glDrawer.setNumOptions(6);
     }
 }
