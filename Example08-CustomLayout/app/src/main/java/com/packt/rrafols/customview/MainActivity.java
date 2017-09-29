@@ -17,7 +17,7 @@ public class MainActivity extends AppCompatActivity {
         CustomLayout customLayout = (CustomLayout) findViewById(R.id.custom_layout);
 
         Random rnd = new Random();
-        for(int i = 0; i < 50; i++) {
+        for(int i = 0; i < 200; i++) {
             OwnCustomView view = new OwnCustomView(this);
 
             int width = rnd.nextInt(200) + 50;

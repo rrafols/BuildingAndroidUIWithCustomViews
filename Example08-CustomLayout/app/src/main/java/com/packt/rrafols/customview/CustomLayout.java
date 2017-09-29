@@ -58,11 +58,6 @@ public class CustomLayout extends ViewGroup {
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-        if(getWidth() == 0) {
-            super.onMeasure(widthMeasureSpec, heightMeasureSpec);
-            return;
-        }
-
         int count = getChildCount();
 
         int rowHeight = 0;
