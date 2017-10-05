@@ -131,10 +131,15 @@ public class EPG extends View {
             highlightedProgramColor = ta.getColor(R.styleable.EPG_highlightedProgramColor, HIGHLIGHTED_PROGRAM_COLOR);
             programColor = ta.getColor(R.styleable.EPG_programColor, PROGRAM_COLOR);
 
-            channelHeight = ta.getFloat(R.styleable.EPG_channelHeight, CHANNEL_HEIGHT) * screenDensity;
-            programMargin = ta.getFloat(R.styleable.EPG_programMargin, PROGRAM_MARGIN) * screenDensity;
-            timebarHeight = ta.getFloat(R.styleable.EPG_timebarHeight, TIMEBAR_HEIGHT) * screenDensity;
+            channelHeight = ta.getDimension(R.styleable.EPG_channelHeight,
+                    CHANNEL_HEIGHT * screenDensity);
 
+            programMargin = ta.getDimension(R.styleable.EPG_programMargin,
+                    PROGRAM_MARGIN * screenDensity);
+
+            timebarHeight = ta.getDimension(R.styleable.EPG_timebarHeight,
+                    TIMEBAR_HEIGHT * screenDensity);
+            
             programTextColor = ta.getColor(R.styleable.EPG_programTextColor, Color.WHITE);
             highlightedProgramTextColor = ta.getColor(R.styleable.EPG_highlightedProgramTextColor, Color.BLACK);
 
