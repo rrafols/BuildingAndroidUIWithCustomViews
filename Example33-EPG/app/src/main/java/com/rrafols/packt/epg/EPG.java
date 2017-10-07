@@ -17,7 +17,6 @@ import android.view.View;
 
 import com.rrafols.packt.epg.data.Channel;
 import com.rrafols.packt.epg.data.Program;
-import com.squareup.picasso.MemoryPolicy;
 import com.squareup.picasso.Picasso;
 import com.squareup.picasso.Target;
 
@@ -59,6 +58,7 @@ public class EPG extends View {
     private final Paint paintCurrentTime;
 
     private Channel[] channelList;
+    private ChannelIconTarget[] channelTargets;
     private int  backgroundColor;
 
     private float dragX;
@@ -208,6 +208,7 @@ public class EPG extends View {
 
     public void setChannelList(Channel[] channelList) {
         this.channelList = channelList;
+        this.channelTargets = new ChannelIconTarget[channelList.length];
     }
 
     @Override
@@ -307,7 +308,6 @@ public class EPG extends View {
     }
 
     private void drawEPGBody(Canvas canvas, long currentTime, float verticalOffset) {
-
         // compute initial and end channel to draw based on the scroll position and screen size
         int startChannel = (int) (frScrollY / channelHeight);
         verticalOffset -= startChannel * channelHeight;
@@ -337,15 +337,15 @@ public class EPG extends View {
             if (channelList[i].getIcon() != null) {
                 float iconMargin = (channelHeight - channelList[i].getIcon().getHeight()) / 2;
                 canvas.drawBitmap(channelList[i].getIcon(), iconMargin, channelTop + iconMargin, null);
-            } else if (!channelList[i].isIconRequested()) {
-                // if icon has not been requested, do a network request
-                channelList[i].setIconRequested(true);
+            } else {
+                if (channelTargets[i] == null) {
+                    channelTargets[i] = new ChannelIconTarget(channelList[i]);
+                }
 
                 Picasso.with(context)
                         .load(channelList[i]
                         .getIconUrl())
-                        .memoryPolicy(MemoryPolicy.NO_CACHE)
-                        .into(new ChannelIconTarget(channelList[i]));
+                        .into(channelTargets[i]);
             }
 
             canvas.save();

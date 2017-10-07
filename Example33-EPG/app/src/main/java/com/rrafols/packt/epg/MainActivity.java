@@ -33,7 +33,8 @@ public class MainActivity extends AppCompatActivity {
     private static void populateDummyChannelList(EPG epg) {
         Channel[] channelList = new Channel[20];
         for (int i = 0; i < channelList.length; i++) {
-            String iconURL = "https://github.com/googlei18n/noto-emoji/raw/master/png/128/emoji_u1f3";
+            String iconURL = "https://raw.githubusercontent.com/googlei18n/noto-emoji/master/png/128/emoji_u1f3";
+
             if (i < 10) {
                 iconURL += "0" + i;
             } else {
