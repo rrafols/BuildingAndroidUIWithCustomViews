@@ -67,11 +67,8 @@ public class Chart extends View {
         linePaint[0].setStrokeWidth(8.f);
         linePaint[0].setStyle(Paint.Style.STROKE);
 
-        linePaint[1] = new Paint();
-        linePaint[1].setAntiAlias(true);
+        linePaint[1] = new Paint(linePaint[0]);
         linePaint[1].setColor(0xff4040ff);
-        linePaint[1].setStrokeWidth(8.f);
-        linePaint[1].setStyle(Paint.Style.STROKE);
 
 
         circlePaint = new Paint[2];
@@ -80,10 +77,8 @@ public class Chart extends View {
         circlePaint[0].setColor(0xffff2020);
         circlePaint[0].setStyle(Paint.Style.FILL);
 
-        circlePaint[1] = new Paint();
-        circlePaint[1].setAntiAlias(true);
+        circlePaint[1] = new Paint(circlePaint[0]);
         circlePaint[1].setColor(0xff20ff20);
-        circlePaint[1].setStyle(Paint.Style.FILL);
 
 
         backgroundPaint = new Paint();
