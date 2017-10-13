@@ -358,7 +358,7 @@ public class Chart extends View {
             for (int i = 0; i <= 10; i++) {
                 float step = ((float) i / 10.f);
                 float yl = step * height + topPadding
-                        + backgroundPaint.getTextSize() * 0.5f;
+                        - (backgroundPaint.ascent() + backgroundPaint.descent()) * 0.5f;
 
                 canvas.drawText(verticalLabels[i],
                         labelLeftPadding,
